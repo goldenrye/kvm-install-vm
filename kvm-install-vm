@@ -655,6 +655,9 @@ _EOF_
     CI_ISO_OPTION="$(param --disk ${CI_ISO_PARAMS})"
     GRAPHICS_OPTION="$(param --graphics ${GRAPHICS_PARAMS})"
 
+    NETWORK2_OPTION="--network=bridge=dr-br,model=virtio,mac=52:00:00:00:00:01"
+    NETWORK3_OPTION="--network=bridge=sp-br,model=virtio,mac=54:00:00:00:00:01"
+
     # Call virt-install to import the cloud image and create a new VM
     run "Installing the domain" \
         virt-install --import \
