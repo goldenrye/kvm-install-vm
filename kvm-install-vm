@@ -621,7 +621,7 @@ _EOF_
     NETWORK_PARAMS="$(join ',' \
         $(param bridge ${BRIDGE}) \
         $(param model ${NETWORK_MODEL}) \
-        $(param mac ${MACADDRESS}) \
+        $(param mac 50:00:00:00:00:${MACADDRESS}) \
         ${NETWORK_EXTRA})"
 
     # Assemble disk parameters.
@@ -655,8 +655,8 @@ _EOF_
     CI_ISO_OPTION="$(param --disk ${CI_ISO_PARAMS})"
     GRAPHICS_OPTION="$(param --graphics ${GRAPHICS_PARAMS})"
 
-    NETWORK2_OPTION="--network=bridge=dr-br,model=virtio,mac=52:00:00:00:00:01"
-    NETWORK3_OPTION="--network=bridge=sp-br,model=virtio,mac=54:00:00:00:00:01"
+    NETWORK2_OPTION="--network=bridge=dr-br,model=virtio,mac=52:00:00:00:00:${MACADDRESS}"
+    NETWORK3_OPTION="--network=bridge=sp-br,model=virtio,mac=54:00:00:00:00:${MACADDRESS}"
 
     # Call virt-install to import the cloud image and create a new VM
     run "Installing the domain" \
@@ -668,6 +668,8 @@ _EOF_
         ${DISK_OPTION} \
         ${CI_ISO_OPTION} \
         ${NETWORK_OPTION} \
+        ${NETWORK2_OPTION} \
+        ${NETWORK3_OPTION} \
         --os-type=${OS_TYPE} \
         --os-variant=${OS_VARIANT} \
         --noautoconsole \
@@ -697,7 +699,7 @@ _EOF_
     if [ -f "/var/lib/libvirt/dnsmasq/${BRIDGE}.status" ]
     then
         outputn "Waiting for domain to get an IP address"
-        MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/mac address/ {print $2}')
+        MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/50:00:00:00:00/ {print $2}')
         while true
         do
             IP=$(grep -B1 $MAC /var/lib/libvirt/dnsmasq/$BRIDGE.status | head \
@@ -717,6 +719,7 @@ _EOF_
         IP="<IP address>"
     fi
 
+    export VMNAME IP
     printf "\n"
     output "SSH to ${VMNAME}: 'ssh ${LOGIN_USER}@${IP}' or 'ssh ${LOGIN_USER}@${VMNAME}'"
     CONSOLE=$(virsh domdisplay ${VMNAME})
@@ -1013,7 +1016,7 @@ case "${subcommand}" in
             set_defaults
             set_custom_defaults
             "${subcommand}" "$@"
-            exit $?
+            #exit $?
         fi
         ;;
     *)
