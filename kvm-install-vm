@@ -261,7 +261,7 @@ function delete_vm ()
     else
         output "Domain ${VMNAME} does not exist"
     fi
-    
+
     [[ -d ${VMDIR}/${VMNAME} ]] && DISKDIR=${VMDIR}/${VMNAME} || DISKDIR=${IMAGEDIR}/${VMNAME}
     [ -d $DISKDIR ] \
         && outputn "Deleting ${VMNAME} files" \
@@ -655,8 +655,8 @@ _EOF_
     CI_ISO_OPTION="$(param --disk ${CI_ISO_PARAMS})"
     GRAPHICS_OPTION="$(param --graphics ${GRAPHICS_PARAMS})"
 
-    NETWORK2_OPTION="--network=bridge=dr-br,model=virtio,mac=52:00:00:00:00:${MACADDRESS}"
-    NETWORK3_OPTION="--network=bridge=sp-br,model=virtio,mac=54:00:00:00:00:${MACADDRESS}"
+    NETWORK2_OPTION="--network=bridge=br-ctrl,model=virtio,mac=52:00:00:00:00:${MACADDRESS}"
+    NETWORK3_OPTION="--network=bridge=br-data,model=virtio,mac=54:00:00:00:00:${MACADDRESS}"
 
     # Call virt-install to import the cloud image and create a new VM
     run "Installing the domain" \
