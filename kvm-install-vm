@@ -54,6 +54,7 @@ function usage_subcommand ()
             printf "    -g          Graphics type         (default: spice)\n"
             printf "    -h          Display help\n"
             printf "    -i          Custom QCOW2 Image\n"
+            printf "    -I          IP address\n"
             printf "    -k          SSH Public Key        (default: $HOME/.ssh/id_rsa.pub)\n"
             printf "    -l          Location of Images    (default: $HOME/virt/images)\n"
             printf "    -L          Location of VMs       (default: $HOME/virt/vms)\n"
@@ -373,6 +374,14 @@ function fetch_images ()
             IMAGE_URL=https://cloud-images.ubuntu.com/releases/18.04/release
             DISK_FORMAT=qcow2
             LOGIN_USER=ubuntu
+	    ;;
+        secnet)
+            QCOW=secnet-vm.img
+            OS_TYPE="linux"
+            OS_VARIANT="ubuntu18.04"
+            IMAGE_URL=https://30.57.186.110
+            DISK_FORMAT=qcow2
+            LOGIN_USER=ubuntu
             ;;
         *)
             die "${DISTRO} not a supported OS.  Run 'kvm-install-vm create help'."
@@ -448,7 +457,7 @@ function set_sudo_group ()
         centos?|fedora??|*-atomic|amazon? )
             SUDOGROUP="wheel"
             ;;
-        ubuntu*|debian? )
+        ubuntu*|debian?|secnet )
             SUDOGROUP="sudo"
             ;;
         *)
@@ -463,7 +472,7 @@ function set_cloud_init_remove ()
         centos6 )
             CLOUDINITDISABLE="chkconfig cloud-init off"
             ;;
-        centos7|amazon?|fedora??|ubuntu*|debian? )
+        centos7|amazon?|fedora??|ubuntu*|debian?|secnet )
             CLOUDINITDISABLE="systemctl disable cloud-init.service"
             ;;
         *-atomic)
@@ -476,7 +485,7 @@ function set_network_restart_cmd ()
 {
     case "${DISTRO}" in
         centos6 )           NETRESTART="service network stop && service network start" ;;
-        ubuntu*|debian?)    NETRESTART="systemctl stop networking && systemctl start networking" ;;
+        ubuntu*|debian?|secnet)    NETRESTART="systemctl stop networking && systemctl start networking" ;;
         *)                  NETRESTART="systemctl stop network && systemctl start network" ;;
     esac
 }
@@ -558,6 +567,10 @@ _EOF_
 
 --==BOUNDARY==
 Content-Type: text/x-shellscript; charset="us-ascii"
+#!/bin/bash
+
+IP="${IP}"
+MAC="${MACADDRESS}"
 ${SCRIPT}
 
 --==BOUNDARY==--
@@ -655,6 +668,7 @@ _EOF_
     CI_ISO_OPTION="$(param --disk ${CI_ISO_PARAMS})"
     GRAPHICS_OPTION="$(param --graphics ${GRAPHICS_PARAMS})"
 
+    NETWORK1_OPTION="--network=bridge=virbr0,model=virtio,mac=50:00:00:00:00:${MACADDRESS}"
     NETWORK2_OPTION="--network=bridge=br-ctrl,model=virtio,mac=52:00:00:00:00:${MACADDRESS}"
     NETWORK3_OPTION="--network=bridge=br-data,model=virtio,mac=54:00:00:00:00:${MACADDRESS}"
 
@@ -667,7 +681,7 @@ _EOF_
         --cpu=${FEATURE} \
         ${DISK_OPTION} \
         ${CI_ISO_OPTION} \
-        ${NETWORK_OPTION} \
+        ${NETWORK1_OPTION} \
         ${NETWORK2_OPTION} \
         ${NETWORK3_OPTION} \
         --os-type=${OS_TYPE} \
@@ -696,28 +710,28 @@ _EOF_
     outputn "Cleaning up cloud-init files"
     rm -f $USER_DATA $META_DATA $CI_ISO && ok
 
-    if [ -f "/var/lib/libvirt/dnsmasq/${BRIDGE}.status" ]
-    then
-        outputn "Waiting for domain to get an IP address"
-        MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/50:00:00:00:00/ {print $2}')
-        while true
-        do
-            IP=$(grep -B1 $MAC /var/lib/libvirt/dnsmasq/$BRIDGE.status | head \
-                 -n 1 | awk '{print $2}' | sed -e s/\"//g -e s/,//)
-            if [ "$IP" = "" ]
-            then
-                sleep 1
-            else
-                ok
-                break
-            fi
-        done
-        printf "\n"
-        check_delete_known_host
-    else
-        outputn "Bridge looks like a layer 2 bridge, get the domain's IP address from your DHCP server"
-        IP="<IP address>"
-    fi
+    #if [ -f "/var/lib/libvirt/dnsmasq/${BRIDGE}.status" ]
+    #then
+    #    outputn "Waiting for domain to get an IP address"
+    #    MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/50:00:00:00:00/ {print $2}')
+    #    while true
+    #    do
+    #        IP=$(grep -B1 $MAC /var/lib/libvirt/dnsmasq/$BRIDGE.status | head \
+    #             -n 1 | awk '{print $2}' | sed -e s/\"//g -e s/,//)
+    #        if [ "$IP" = "" ]
+    #        then
+    #            sleep 1
+    #        else
+    #            ok
+    #            break
+    #        fi
+    #    done
+    #    printf "\n"
+    #    check_delete_known_host
+    #else
+    #    outputn "Bridge looks like a layer 2 bridge, get the domain's IP address from your DHCP server"
+    #    IP="<IP address>"
+    #fi
 
     export VMNAME IP
     printf "\n"
@@ -817,7 +831,7 @@ function set_custom_defaults ()
 function create ()
 {
     # Parse command line arguments
-    while getopts ":b:c:d:D:f:g:i:k:l:L:m:M:p:s:t:T:u:ahynv" opt
+    while getopts ":b:c:d:D:f:g:i:I:k:l:L:m:M:p:s:t:T:u:ahynv" opt
     do
         case "$opt" in
             a ) AUTOSTART=${OPTARG} ;;
@@ -828,6 +842,7 @@ function create ()
             f ) FEATURE="${OPTARG}" ;;
             g ) GRAPHICS="${OPTARG}" ;;
             i ) IMAGE="${OPTARG}" ;;
+            I ) IP="${OPTARG}" ;;
             k ) PUBKEY="${OPTARG}" ;;
             l ) IMAGEDIR="${OPTARG}" ;;
             L ) VMDIR="${OPTARG}" ;;

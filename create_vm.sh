@@ -2,6 +2,7 @@
 
 declare -A vm_ip
 declare -i num
+declare -i ip
 declare -i vm_total
 
 VM_DIR=$1
@@ -18,16 +19,22 @@ if [ ! -d ${VM_DIR} ]; then
     mkdir ${VM_DIR}
 fi
 
-sudo brctl addbr br-ctrl
-sudo brctl addbr br-data
+ifconfig br-data > /dev/null
+if [ "$?" != "0" ]; then
+    sudo brctl addbr br-ctrl
+    sudo ifconfig br-ctrl up
+    sudo brctl addbr br-data
+    sudo ifconfig br-data up
+fi
 
-vm_total=2
+vm_total=1
 num=0
 while [ $num -lt ${vm_total} ]; do
     vm_suffix=$(printf "%02x" $num)
+    ip=num+100
     echo "**Create vm secnet-vm${vm_suffix}..."
-    . ./kvm-install-vm create -l ${VM_DIR} -L ${VM_DIR} -t ubuntu1604 -T US/Pacific -M ${vm_suffix} -u secnet -v secnet-vm${vm_suffix}
-    vm_ip[$num]=$IP
+    . ./kvm-install-vm create -l ${VM_DIR} -L ${VM_DIR} -t secnet -s `pwd`/network-provision.sh -T US/Pacific -M ${vm_suffix} -I 192.168.122.$ip -u secnet -v secnet-vm${vm_suffix}
+    vm_ip[$num]=192.168.122.$ip
     num=num+1
 done
 
@@ -41,15 +48,3 @@ while [ $num -lt ${vm_total} ]; do
     echo "secnet-vm${vm_suffix}:   ${vm_ip[$num]}" >> vm_file
     num=num+1
 done
-
-
-#num=0
-#while [ $num -lt ${vm_total} ]; do
-#    ssh-keygen -R ${vm_ip[$num]}
-#    ssh -oStrictHostKeyChecking=no secnet@${vm_ip[$num]} sudo apt update
-#    ssh -oStrictHostKeyChecking=no secnet@${vm_ip[$num]} sudo apt install docker.io -y
-#    ssh -oStrictHostKeyChecking=no secnet@${vm_ip[$num]} sudo usermod -aG docker secnet
-#    ssh -oStrictHostKeyChecking=no secnet@${vm_ip[$num]} docker pull polycubenetwork/polycube:latest
-#    num=num+1
-#done
-
