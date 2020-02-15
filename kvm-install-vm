@@ -375,8 +375,9 @@ function fetch_images ()
             DISK_FORMAT=qcow2
             LOGIN_USER=ubuntu
 	    ;;
-        secnet)
-            QCOW=secnet-vm.img
+        asn)
+#            QCOW=secnet-vm.img
+            QCOW=asn-vm.img
             OS_TYPE="linux"
             OS_VARIANT="ubuntu18.04"
             IMAGE_URL=https://30.57.186.110
@@ -457,7 +458,7 @@ function set_sudo_group ()
         centos?|fedora??|*-atomic|amazon? )
             SUDOGROUP="wheel"
             ;;
-        ubuntu*|debian?|secnet )
+        ubuntu*|debian?|asn )
             SUDOGROUP="sudo"
             ;;
         *)
@@ -472,7 +473,7 @@ function set_cloud_init_remove ()
         centos6 )
             CLOUDINITDISABLE="chkconfig cloud-init off"
             ;;
-        centos7|amazon?|fedora??|ubuntu*|debian?|secnet )
+        centos7|amazon?|fedora??|ubuntu*|debian?|asn )
             CLOUDINITDISABLE="systemctl disable cloud-init.service"
             ;;
         *-atomic)
@@ -485,7 +486,7 @@ function set_network_restart_cmd ()
 {
     case "${DISTRO}" in
         centos6 )           NETRESTART="service network stop && service network start" ;;
-        ubuntu*|debian?|secnet)    NETRESTART="systemctl stop networking && systemctl start networking" ;;
+        ubuntu*|debian?|asn)    NETRESTART="systemctl stop networking && systemctl start networking" ;;
         *)                  NETRESTART="systemctl stop network && systemctl start network" ;;
     esac
 }
